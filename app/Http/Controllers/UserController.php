@@ -1,0 +1,67 @@
+<?php
+
+namespace App\Http\Controllers;
+
+use App\Models\User;
+use Illuminate\Http\Request;
+use Illuminate\Validation\Rules;
+use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Hash;
+
+class UserController extends Controller
+{
+    public function register()
+    {
+        return view('user.register');
+    }
+
+    public function logout()
+    {
+        Auth::logout();
+        return redirect()->route('dashboard');
+    }
+
+    public function store(Request $request)
+    {
+        // 1. 验证
+        $request->validate([
+            'name' => ['required', 'string', 'max:255'],
+            'email' => ['required', 'string', 'email', 'max:255', 'unique:users'],
+            'password' => ['required', 'confirmed', Rules\Password::defaults()],
+        ]);
+
+        // 2. 创建用户
+        $user = User::create([
+            'name' => $request->name,
+            'email' => $request->email,
+            'password' => Hash::make($request->password),
+        ]);
+
+        // 3. 上传头像图片并更新用户
+        if ($request->hasFile('avatar')) {
+            $avatar = $request->file('avatar')->store('avatars');
+            $user->update(['avatar' => $avatar]);
+        }
+
+        // 4. 登录
+        Auth::login($user);
+
+        // 5. 生成一个个人凭证
+        // $voucher = Voucher::create([
+        //     'code' => Str::random(8),
+        //     'discount_percent' => 10,
+        //     'user_id' => $user->id
+        // ]);
+
+        // 6. 发送带有欢迎电子邮件的凭证
+        // $user->notify(new NewUserWelcomeNotification($voucher->code));
+
+        // 7. 通知管理员有新用户
+        // foreach (config('app.admin_emails') as $adminEmail) {
+        //     Notification::route('mail', $adminEmail)
+        //         ->notify(new NewUserAdminNotification($user));
+        // }
+
+        return redirect()->route('dashboard');
+    }
+}
